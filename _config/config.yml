@@ -1,13 +1,9 @@
 ---
-Name: otagowysiwygconfiguration
+Name: otagowysiwygconfiguration-requirements
 After:
-  - '#coreconfig'
+  - '#adminroutes'
 ---
-# Empty by design. Add service config, extensions, or HTMLEditor settings later.
-# For example (to be added when needed):
-# SilverStripe\Forms\HTMLEditor\TinyMCEConfig:
-#   themes:
-#     advanced:
-#       # toolbar: 'bold italic underline ...'
-#       # plugins: 'link lists table code'
-#       # valid_elements: '*[*]'
+SilverStripe\Admin\LeftAndMain:
+  extra_requirements_javascript:
+    - 'otago/wysiwyg-configuration:client/js/custom_paste_cleaner.js'
+    - 'otago/wysiwyg-configuration:client/js/preview-fixes.js'

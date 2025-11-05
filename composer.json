@@ -1,6 +1,6 @@
 {
   "name": "otago/wysiwyg-configuration",
-  "description": "An empty SilverStripe module scaffold for WYSIWYG configuration.",
+  "description": "WYSIWYG (TinyMCE) configuration for SilverStripe CMS (vendormodule).",
   "type": "silverstripe-vendormodule",
   "license": "BSD-3-Clause",
   "authors": [
@@ -11,7 +11,8 @@
   ],
   "require": {
     "php": ">=7.4",
-    "silverstripe/framework": "^4.13 || ^5.1"
+    "silverstripe/framework": "^4.13 || ^5.1",
+    "silverstripe/admin": "^1.13 || ^2"
   },
   "autoload": {
     "psr-4": {
