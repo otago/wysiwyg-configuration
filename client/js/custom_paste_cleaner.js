@@ -1,6 +1,10 @@
-/* OTAGO TinyMCE paste cleaner with robust init, safe plugin check, and detailed logging */
+/* OTAGO TinyMCE paste cleaner using Entwine
+   - No global polling or long-lived listeners
+   - Attaches per editor when the corresponding <textarea> matches Entwine
+   - Cleans up when the field is removed
+*/
 
-(function () {
+(function ($) {
     var NS = 'OTAGO:paste-cleaner';
     var debug = typeof window.OTAGO_WYSIWYG_DEBUG === 'boolean' ? window.OTAGO_WYSIWYG_DEBUG : true;
 
@@ -27,14 +31,11 @@
         console.error.apply(console, args);
     }
 
-    // Keep track of whether we defined the plugin and which editors we've patched
+    // Track editors we’ve already patched (by ID)
     if (!window.OTAGO_WYSIWYG_ATTACHED_EDITORS) {
         window.OTAGO_WYSIWYG_ATTACHED_EDITORS = new Set();
     }
 
-    /* ------------------------------
-       The actual paste cleaning logic
-    --------------------------------*/
     function installPasteCleaner(editor) {
         var id = editor && editor.id;
         if (!id) {
@@ -165,116 +166,71 @@
         log('installPasteCleaner(): attached OK for editor', id);
     }
 
-    /* ------------------------------
-       Define plugin (future editors)
-    --------------------------------*/
-    function definePlugin() {
-        if (!window.tinymce || !window.tinymce.PluginManager) {
-            warn('definePlugin(): TinyMCE or PluginManager missing');
-            return false;
-        }
+    /**
+     * Attach to an HtmlEditorField when it appears.
+     * We support both .htmleditor and .htmleditorfield just in case.
+     */
+    $.entwine('otago', function ($) {
+        $('textarea.htmleditor, textarea.htmleditorfield').entwine({
+            onmatch: function () {
+                this._super();
+                var id = this.attr('id');
+                log('onmatch(): textarea matched with id', id);
 
-        if (window.OTAGO_WYSIWYG_PLUGIN_DEFINED) {
-            log('definePlugin(): already defined (sentinel)');
-            return true;
-        }
+                var self = this;
 
-        window.tinymce.PluginManager.add('custom_paste_cleaner', function (editor) {
-            log('Plugin factory invoked for editor', editor && editor.id);
-            // Even when enabled via PHP config, ensure handler is attached:
-            installPasteCleaner(editor);
-            return {}; // TinyMCE plugin API expects a plugin object
-        });
+                function tryAttach() {
+                    try {
+                        if (!window.tinymce) {
+                            warn('tryAttach(): tinymce not present yet');
+                            return false;
+                        }
+                        var ed = window.tinymce.get(id);
+                        if (ed) {
+                            log('tryAttach(): editor found for', id);
+                            installPasteCleaner(ed);
+                            return true;
+                        }
+                        // If editor not ready yet, listen once for this specific editor via AddEditor
+                        if (typeof window.tinymce.on === 'function') {
+                            var handler = function (evt) {
+                                var editor = evt && evt.editor;
+                                if (editor && editor.id === id) {
+                                    log('AddEditor captured for', id);
+                                    installPasteCleaner(editor);
+                                    // Detach this ad-hoc listener
+                                    if (typeof window.tinymce.off === 'function') {
+                                        window.tinymce.off('AddEditor', handler);
+                                    }
+                                }
+                            };
+                            // Store handler so we can clean it up if this field is removed before firing
+                            self.data('otago-addeditor-handler', handler);
+                            window.tinymce.on('AddEditor', handler);
+                            log('tryAttach(): waiting for AddEditor event for', id);
+                            return true; // we've set up the one-off hook
+                        }
+                        warn('tryAttach(): tinymce present but no .on API; cannot hook AddEditor');
+                        return false;
+                    } catch (ex) {
+                        error('tryAttach(): failed', ex);
+                        return false;
+                    }
+                }
 
-        window.OTAGO_WYSIWYG_PLUGIN_DEFINED = true;
-        log('Plugin definition registered with TinyMCE PluginManager (sentinel set).');
-        return true;
-    }
+                // Attempt immediate attach; if TinyMCE not ready yet, AddEditor listener will handle it
+                tryAttach();
+            },
 
-    /* --------------------------------------------
-       Hook TinyMCE lifecycle + patch existing
-    ---------------------------------------------*/
-    function hookAddEditor() {
-        if (!window.tinymce || typeof window.tinymce.on !== 'function') {
-            warn('hookAddEditor(): tinymce.on missing');
-            return false;
-        }
-        window.tinymce.on('AddEditor', function (evt) {
-            var ed = evt && evt.editor;
-            log('tinymce AddEditor fired; editor id:', ed && ed.id);
-            // Ensure our plugin is defined (for future), then attach to this editor now
-            definePlugin();
-            if (ed) installPasteCleaner(ed);
-        });
-        log('hookAddEditor(): listener attached.');
-        return true;
-    }
-
-    function patchExistingEditors() {
-        try {
-            var eds = (window.tinymce && window.tinymce.editors) || [];
-            if (!eds || !eds.length) {
-                log('patchExistingEditors(): none found');
-                return;
+            onunmatch: function () {
+                // Clean up any AddEditor handler we may have attached for this field
+                var handler = this.data('otago-addeditor-handler');
+                if (handler && window.tinymce && typeof window.tinymce.off === 'function') {
+                    window.tinymce.off('AddEditor', handler);
+                    log('onunmatch(): removed AddEditor handler for', this.attr('id'));
+                }
+                this._super();
             }
-            log('patchExistingEditors(): found editors', eds.map(function (e) { return e.id; }));
-            eds.forEach(function (ed) {
-                installPasteCleaner(ed);
-            });
-        } catch (ex) {
-            warn('patchExistingEditors(): failed', ex);
-        }
-    }
-
-    function retryUntilReady(maxMs) {
-        var start = Date.now();
-        var delay = 100; // ms
-        var maxDelay = 2000;
-
-        (function tick() {
-            var elapsed = Date.now() - start;
-            if (elapsed > maxMs) {
-                warn('retryUntilReady(): timed out after', maxMs, 'ms');
-                return;
-            }
-            var hasTMCE = !!(window.tinymce && window.tinymce.PluginManager);
-            if (hasTMCE) {
-                log('retryUntilReady(): TinyMCE present — defining plugin, hooking AddEditor, patching existing.');
-                definePlugin();
-                hookAddEditor();
-                patchExistingEditors();
-                return;
-            }
-            delay = Math.min(maxDelay, Math.round(delay * 1.5));
-            log('retryUntilReady(): TinyMCE not ready; retrying in', delay, 'ms');
-            setTimeout(tick, delay);
-        })();
-    }
-
-    /* --------------------------------------------
-       Entry point
-    ---------------------------------------------*/
-    function init() {
-        log('init(): starting');
-
-        var defined = definePlugin();
-        var hooked = hookAddEditor();
-
-        if (!defined || !hooked) {
-            retryUntilReady(15000); // up to 15s
-        } else {
-            // TinyMCE is already ready—patch any editors that are already on the page
-            patchExistingEditors();
-        }
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () {
-            log('DOMContentLoaded -> init()');
-            init();
         });
-    } else {
-        log('Document already ready -> init()');
-        init();
-    }
-})();
+    });
+})(jQuery);
