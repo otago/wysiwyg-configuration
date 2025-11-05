@@ -1,9 +1,8 @@
 ---
-Name: otagowysiwygconfiguration-requirements
+Name: otago-wysiwyg-paste-cleaner
 After:
   - '#adminroutes'
 ---
 SilverStripe\Admin\LeftAndMain:
   extra_requirements_javascript:
     - 'otago/wysiwyg-configuration:client/js/custom_paste_cleaner.js'
-    - 'otago/wysiwyg-configuration:client/js/preview-fixes.js'

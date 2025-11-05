@@ -1,6 +1,6 @@
 {
   "name": "otago/wysiwyg-configuration",
-  "description": "WYSIWYG (TinyMCE) configuration for SilverStripe CMS (vendormodule).",
+  "description": "Entwine-based paste cleaner for TinyMCE in SilverStripe CMS.",
   "type": "silverstripe-vendormodule",
   "license": "BSD-3-Clause",
   "authors": [
@@ -22,10 +22,7 @@
   "extra": {
     "expose": [
       "client"
-    ],
-    "branch-alias": {
-      "dev-main": "1.x-dev"
-    }
+    ]
   },
   "minimum-stability": "stable",
   "prefer-stable": true
