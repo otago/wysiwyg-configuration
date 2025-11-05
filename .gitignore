@@ -1,0 +1,13 @@
+# Composer / PHP
+/vendor/
+/composer.lock
+
+# IDE / OS
+/.idea/
+/.vscode/
+.DS_Store
+
+# SilverStripe cache/logs
+silverstripe-cache/
+*.log
+``

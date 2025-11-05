@@ -1,0 +1,13 @@
+---
+Name: otagowysiwygconfiguration
+After:
+  - '#coreconfig'
+---
+# Empty by design. Add service config, extensions, or HTMLEditor settings later.
+# For example (to be added when needed):
+# SilverStripe\Forms\HTMLEditor\TinyMCEConfig:
+#   themes:
+#     advanced:
+#       # toolbar: 'bold italic underline ...'
+#       # plugins: 'link lists table code'
+#       # valid_elements: '*[*]'

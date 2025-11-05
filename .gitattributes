@@ -1,0 +1,5 @@
+# Keep exports clean
+*.md export-ignore
+tests export-ignore
+.gitattributes export-ignore
+.gitignore export-ignore

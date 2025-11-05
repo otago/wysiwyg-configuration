@@ -1,0 +1,9 @@
+---
+Name: otagowysiwygconfigurationroutes
+After:
+  - '#coreroutes'
+---
+# No routes. Keep this file if you plan to add controllers later.
+# SilverStripe\Control\Director:
+#   rules:
+#     'wysiwyg-config//$Action/$ID/$OtherID': 'Otago\WysiwygConfiguration\Controllers\WysiwygController'
